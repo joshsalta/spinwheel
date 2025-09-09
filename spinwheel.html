@@ -92,7 +92,7 @@ const prizes = [
   {label: "5% OFF", code: "CHFA5", weight: 60},
   {label: "10% OFF", code: "CHFA10", weight: 20},
   {label: "15% OFF", code: "CHFA15", weight: 10},
-  {label: "20% OFF", code: "CHFA20", weight: 15},
+  {label: "20% OFF", code: "CHFA20", weight: 5},
   {label: "30% OFF", code: "CHFA30", weight: 3},
   {label: "50% OFF", code: "CHFA50", weight: 1},
   {label: "75% OFF", code: "CHFA75", weight: 0.5}
@@ -126,8 +126,15 @@ function drawWheel() {
     `;
 
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+    // ✅ Highlight 75% OFF slice in green
+    if (prizes[i].label === "75% OFF") {
+      path.setAttribute("fill", "#28a745"); // green
+    } else {
+      path.setAttribute("fill", colors[i % 2]); // black/gray alternating
+    }
+
     path.setAttribute("d", pathData);
-    path.setAttribute("fill", colors[i % 2]);
     path.setAttribute("stroke", "#ffffff");
     path.setAttribute("stroke-width", "2");
     svg.appendChild(path);
@@ -221,7 +228,7 @@ function spinWheel() {
 function showResult(prize) {
   const email = document.getElementById("userEmail").value;
 
-  fetch("YOUR_WEB_APP_URL_HERE", {
+  fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
     method: "POST",
     body: JSON.stringify({
       email: email,
@@ -240,7 +247,6 @@ function showResult(prize) {
       return;
     }
 
-    // ✅ Always use backend's prize & code
     document.getElementById("spin-wrapper").style.display = "none";
     document.getElementById("result").style.display = "block";
     document.getElementById("resultText").innerHTML =
@@ -251,4 +257,6 @@ function showResult(prize) {
     alert("Connection error. Please try again.");
   });
 }
-
+</script>
+</body>
+</html>
