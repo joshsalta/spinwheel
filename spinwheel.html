@@ -87,6 +87,7 @@
   </div>
 
 <script>
+// === Prize Setup ===
 const prizes = [
   {label: "5% OFF", code: "CHFA5", weight: 40},
   {label: "10% OFF", code: "CHFA10", weight: 25},
@@ -96,12 +97,13 @@ const prizes = [
   {label: "50% OFF", code: "CHFA50", weight: 3},
   {label: "75% OFF", code: "CHFA75", weight: 1}
 ];
-const colors = ["#000000", "#d3d3d3"];
+const colors = ["#000000", "#d3d3d3"]; 
 const svg = document.getElementById("wheel");
 const radius = 200;
 const center = 200;
 let currentRotation = 0;
 
+// === Draw Wheel ===
 function drawWheel() {
   svg.innerHTML = "";
   let anglePerSlice = 360 / prizes.length;
@@ -147,8 +149,9 @@ function drawWheel() {
   }
 }
 drawWheel();
-svg.classList.add("idle"); // idle rocking
+svg.classList.add("idle");
 
+// === Email Validation ===
 function validateEmail() {
   const email = document.getElementById("userEmail").value;
   const spinBtn = document.getElementById("spinBtn");
@@ -167,6 +170,7 @@ function validateEmail() {
   }
 }
 
+// === Pick Prize with Weighted Odds ===
 function pickPrize() {
   let totalWeight = prizes.reduce((a, p) => a + p.weight, 0);
   let rnd = Math.random() * totalWeight;
@@ -182,8 +186,7 @@ let spinning = false;
 function spinWheel() {
   if (spinning) return;
   spinning = true;
-
-  svg.classList.remove("idle"); // stop idle animation
+  svg.classList.remove("idle"); 
 
   const prize = pickPrize();
   const prizeIndex = prizes.indexOf(prize);
@@ -202,7 +205,6 @@ function spinWheel() {
 
     let eased = 1 - Math.pow(1 - progress, 3);
     currentRotation = eased * finalAngle;
-
     svg.style.transform = `rotate(${currentRotation}deg)`;
 
     if (progress < 1) {
@@ -215,11 +217,32 @@ function spinWheel() {
   requestAnimationFrame(animate);
 }
 
+// === Show Result & Call Backend ===
 function showResult(prize) {
-  document.getElementById("spin-wrapper").style.display = "none";
-  document.getElementById("result").style.display = "block";
-  document.getElementById("resultText").innerHTML =
-    `🎉 Congrats! You won <b>${prize.label}</b><br>Your code: <b>${prize.code}</b>`;
+  const email = document.getElementById("userEmail").value;
+
+  fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      email: email,
+      prize: prize.label,
+      code: prize.code
+    }),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data.success) {
+      alert(data.message);
+      location.reload(); // Reset page if duplicate
+      return;
+    }
+    document.getElementById("spin-wrapper").style.display = "none";
+    document.getElementById("result").style.display = "block";
+    document.getElementById("resultText").innerHTML =
+      `🎉 Congrats! You won <b>${prize.label}</b><br>Your code: <b>${prize.code}</b>`;
+  })
+  .catch(err => console.error(err));
 }
 </script>
 </body>
