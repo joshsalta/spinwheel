@@ -103,6 +103,8 @@ function drawWheel() {
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("fill", colors[i % 2]);
+    path.setAttribute("stroke", "#ffffff");   // outline color (white)
+    path.setAttribute("stroke-width", "2");   // thickness of the outline
     svg.appendChild(path);
 
     // Label
