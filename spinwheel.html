@@ -171,7 +171,7 @@
 
     // 🔧 Safer fetch with raw text fallback
     function sendResult(email, prize, code) {
-      fetch("YOUR_GOOGLE_APPS_SCRIPT_URL_HERE", {
+      fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, prize, code })
