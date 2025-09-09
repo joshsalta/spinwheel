@@ -9,8 +9,15 @@
       text-align: center;
       background: #f9f9f9;
     }
+    #spin-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 50px;
+      margin-top: 30px;
+    }
     #wheel-container {
-      margin-top: 20px;
+      text-align: center;
     }
     #result {
       margin-top: 20px;
@@ -20,40 +27,59 @@
       margin-top: 15px;
       font-size: 16px;
       cursor: pointer;
+      border: none;
+      border-radius: 5px;
     }
     svg {
       border-radius: 50%;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease-out;
+    }
+    /* Idle rocking animation */
+    @keyframes idleRock {
+      0%   { transform: rotate(-2deg); }
+      50%  { transform: rotate(2deg); }
+      100% { transform: rotate(-2deg); }
+    }
+    #wheel.idle {
+      animation: idleRock 3s ease-in-out infinite;
     }
   </style>
 </head>
 <body>
 
-  <!-- Email Form -->
-  <div id="email-form">
-    <h2>Enter your email to play Spin to Win!</h2>
-    <input type="email" id="userEmail" placeholder="Enter your email" required 
-           style="padding:10px; width:250px;"/>
-    <button onclick="startGame()">Submit</button>
-  </div>
+  <div id="spin-wrapper">
 
-  <!-- Spin Wheel -->
-  <div id="wheel-container" style="display:none;">
-    <div style="position:relative; display:inline-block;">
-      <svg id="wheel" xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"></svg>
-      <!-- Pointer -->
-      <div style="position:absolute; top:10px; left:50%; transform:translateX(-50%);">
-        <svg width="30" height="30">
-          <polygon points="15,25 25,5 5,5" style="fill:red; stroke:black; stroke-width:2;"></polygon>
-        </svg>
+    <!-- Wheel -->
+    <div id="wheel-container">
+      <div style="position:relative; display:inline-block;">
+        <svg id="wheel" xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"></svg>
+        <!-- Pointer -->
+        <div style="position:absolute; top:10px; left:50%; transform:translateX(-50%);">
+          <svg width="30" height="30">
+            <polygon points="15,25 25,5 5,5" style="fill:red; stroke:black; stroke-width:2;"></polygon>
+          </svg>
+        </div>
       </div>
+      <br>
+      <button id="spinBtn" onclick="spinWheel()" disabled 
+              style="background:#ccc; color:#666; cursor:not-allowed;">
+        Spin Now
+      </button>
     </div>
-    <br>
-    <button id="spinBtn" onclick="spinWheel()">Spin the Wheel!</button>
+
+    <!-- Email Form -->
+    <div id="email-form" style="max-width:300px; text-align:left;">
+      <h2>Spin the Wheel and Unlock Your Reward!</h2>
+      <p>Enter your email to enable the spin button and win exclusive discounts!</p>
+      <input type="email" id="userEmail" placeholder="Enter your email" 
+             style="padding:10px; width:100%; margin-bottom:10px;" oninput="validateEmail()"/>
+    </div>
+
   </div>
 
   <!-- Result -->
-  <div id="result" style="display:none;">
+  <div id="result" style="display:none; margin-top:20px; text-align:center;">
     <h2 id="resultText"></h2>
     <button onclick="window.location.href='https://www.innotechnutrition.com/our-products'">
       Shop Now
@@ -70,7 +96,7 @@ const prizes = [
   {label: "50% OFF", code: "CHFA50", weight: 3},
   {label: "75% OFF", code: "CHFA75", weight: 1}
 ];
-const colors = ["#000000", "#d3d3d3"]; // black & gray
+const colors = ["#000000", "#d3d3d3"];
 const svg = document.getElementById("wheel");
 const radius = 200;
 const center = 200;
@@ -85,13 +111,11 @@ function drawWheel() {
     let endAngle = startAngle + anglePerSlice;
     let largeArc = endAngle - startAngle > 180 ? 1 : 0;
 
-    // Convert polar to cartesian
     let x1 = center + radius * Math.cos(Math.PI * startAngle / 180);
     let y1 = center + radius * Math.sin(Math.PI * startAngle / 180);
     let x2 = center + radius * Math.cos(Math.PI * endAngle / 180);
     let y2 = center + radius * Math.sin(Math.PI * endAngle / 180);
 
-    // Slice path
     let pathData = `
       M ${center} ${center}
       L ${x1} ${y1}
@@ -99,15 +123,13 @@ function drawWheel() {
       Z
     `;
 
-    // Slice element
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("fill", colors[i % 2]);
-    path.setAttribute("stroke", "#ffffff");   // outline color (white)
-    path.setAttribute("stroke-width", "2");   // thickness of the outline
+    path.setAttribute("stroke", "#ffffff");
+    path.setAttribute("stroke-width", "2");
     svg.appendChild(path);
 
-    // Label
     let midAngle = startAngle + anglePerSlice / 2;
     let lx = center + (radius - 50) * Math.cos(Math.PI * midAngle / 180);
     let ly = center + (radius - 50) * Math.sin(Math.PI * midAngle / 180);
@@ -125,6 +147,25 @@ function drawWheel() {
   }
 }
 drawWheel();
+svg.classList.add("idle"); // idle rocking
+
+function validateEmail() {
+  const email = document.getElementById("userEmail").value;
+  const spinBtn = document.getElementById("spinBtn");
+  const valid = /\S+@\S+\.\S+/.test(email);
+
+  if (valid) {
+    spinBtn.disabled = false;
+    spinBtn.style.background = "#000";
+    spinBtn.style.color = "#fff";
+    spinBtn.style.cursor = "pointer";
+  } else {
+    spinBtn.disabled = true;
+    spinBtn.style.background = "#ccc";
+    spinBtn.style.color = "#666";
+    spinBtn.style.cursor = "not-allowed";
+  }
+}
 
 function pickPrize() {
   let totalWeight = prizes.reduce((a, p) => a + p.weight, 0);
@@ -141,6 +182,8 @@ let spinning = false;
 function spinWheel() {
   if (spinning) return;
   spinning = true;
+
+  svg.classList.remove("idle"); // stop idle animation
 
   const prize = pickPrize();
   const prizeIndex = prizes.indexOf(prize);
@@ -173,21 +216,10 @@ function spinWheel() {
 }
 
 function showResult(prize) {
-  document.getElementById("wheel-container").style.display = "none";
+  document.getElementById("spin-wrapper").style.display = "none";
   document.getElementById("result").style.display = "block";
   document.getElementById("resultText").innerHTML =
     `🎉 Congrats! You won <b>${prize.label}</b><br>Your code: <b>${prize.code}</b>`;
-}
-
-function startGame() {
-  const email = document.getElementById("userEmail").value;
-  if (!email) {
-    alert("Please enter a valid email.");
-    return;
-  }
-  document.getElementById("email-form").style.display = "none";
-  document.getElementById("wheel-container").style.display = "block";
-  drawWheel();
 }
 </script>
 </body>
