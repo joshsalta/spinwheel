@@ -17,9 +17,27 @@
       gap: 40px;
       align-items: center;
     }
+    .wheel-wrapper {
+      position: relative;
+      width: 400px;
+      height: 400px;
+    }
     #wheelCanvas {
       border-radius: 50%;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    /* 🔻 Fixed pointer — now over the wheel */
+    #pointer {
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid red;
+      z-index: 10;
     }
     #spinBtn {
       margin-top: 15px;
@@ -29,20 +47,13 @@
       color: white;
       border: none;
       cursor: pointer;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
     #spinBtn:disabled {
       background: #aaa;
       cursor: not-allowed;
-    }
-    #pointer {
-      width: 0;
-      height: 0;
-      border-left: 15px solid transparent;
-      border-right: 15px solid transparent;
-      border-bottom: 25px solid red;
-      margin: auto;
-      position: relative;
-      top: 20px;
     }
     .form {
       max-width: 300px;
@@ -58,8 +69,10 @@
 <body>
   <div class="container">
     <div>
-      <div id="pointer"></div>
-      <canvas id="wheelCanvas" width="400" height="400"></canvas>
+      <div class="wheel-wrapper">
+        <div id="pointer"></div>
+        <canvas id="wheelCanvas" width="400" height="400"></canvas>
+      </div>
       <button id="spinBtn" disabled>Spin Now</button>
     </div>
     <div class="form">
@@ -86,7 +99,8 @@
       { label: "75% OFF", code: "CHFA75" }
     ];
 
-    const colors = ["#000000", "#d3d3d3", "#000000", "#d3d3d3", "#000000", "#d3d3d3", "#228B22"]; // 75% green
+    // 🟩 Make 75% green, alternate others black/gray
+    const colors = ["#000", "#d3d3d3", "#000", "#d3d3d3", "#000", "#d3d3d3", "#228B22"];
     const arcSize = (2 * Math.PI) / prizes.length;
 
     function drawWheel() {
@@ -98,7 +112,7 @@
         ctx.closePath();
         ctx.fillStyle = colors[i];
         ctx.fill();
-        ctx.strokeStyle = "#fff";
+        ctx.strokeStyle = "#fff"; // outlines between slices
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -155,19 +169,25 @@
       requestAnimationFrame(animateSpin);
     });
 
+    // 🔧 Safer fetch with raw text fallback
     function sendResult(email, prize, code) {
       fetch("YOUR_GOOGLE_APPS_SCRIPT_URL_HERE", {
         method: "POST",
-        mode: "cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, prize, code })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          alert(`🎉 Congratulations! You won ${prize}. Your code is: ${code}`);
-        } else {
-          alert(data.message || "Something went wrong.");
+      .then(async res => {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (data.success) {
+            alert(`🎉 Congratulations! You won ${prize}. Your code is: ${code}`);
+          } else {
+            alert(data.message || "Something went wrong.");
+          }
+        } catch {
+          console.error("Raw server reply:", text);
+          alert("⚠️ Server error — check console for details.");
         }
       })
       .catch(err => {
