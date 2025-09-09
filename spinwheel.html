@@ -17,39 +17,34 @@
       gap: 40px;
       align-items: center;
     }
-    .wheel-wrapper {
+    #wheelWrapper {
       position: relative;
-      width: 400px;
-      height: 400px;
+      display: inline-block;
     }
     #wheelCanvas {
       border-radius: 50%;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
     }
-    /* 🔻 Fixed pointer — now over the wheel */
     #pointer {
-      position: absolute;
-      top: -25px;
-      left: 50%;
-      transform: translateX(-50%);
       width: 0;
       height: 0;
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
-      border-bottom: 30px solid red;
-      z-index: 10;
+      border-bottom: 35px solid red;
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
     }
     #spinBtn {
       margin-top: 15px;
-      padding: 10px 20px;
+      padding: 12px 25px;
       font-size: 16px;
       background: black;
       color: white;
       border: none;
       cursor: pointer;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
+      border-radius: 5px;
     }
     #spinBtn:disabled {
       background: #aaa;
@@ -63,16 +58,16 @@
       width: 100%;
       margin: 10px 0;
       font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div>
-      <div class="wheel-wrapper">
-        <div id="pointer"></div>
-        <canvas id="wheelCanvas" width="400" height="400"></canvas>
-      </div>
+    <div id="wheelWrapper">
+      <div id="pointer"></div>
+      <canvas id="wheelCanvas" width="400" height="400"></canvas>
       <button id="spinBtn" disabled>Spin Now</button>
     </div>
     <div class="form">
@@ -99,11 +94,12 @@
       { label: "75% OFF", code: "CHFA75" }
     ];
 
-    // 🟩 Make 75% green, alternate others black/gray
-    const colors = ["#000", "#d3d3d3", "#000", "#d3d3d3", "#000", "#d3d3d3", "#228B22"];
+    // Colors: alternating black/gray, last slice green
+    const colors = ["#000000", "#d3d3d3", "#000000", "#d3d3d3", "#000000", "#d3d3d3", "#228B22"];
     const arcSize = (2 * Math.PI) / prizes.length;
 
     function drawWheel() {
+      ctx.clearRect(0, 0, 400, 400);
       for (let i = 0; i < prizes.length; i++) {
         const angle = i * arcSize;
         ctx.beginPath();
@@ -112,10 +108,11 @@
         ctx.closePath();
         ctx.fillStyle = colors[i];
         ctx.fill();
-        ctx.strokeStyle = "#fff"; // outlines between slices
+        ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        // Labels
         ctx.save();
         ctx.translate(200, 200);
         ctx.rotate(angle + arcSize / 2);
@@ -139,7 +136,7 @@
       if (spinning) return;
       spinning = true;
 
-      const spinAngle = Math.random() * 2 * Math.PI + 10 * Math.PI; // random + rotations
+      const spinAngle = Math.random() * 2 * Math.PI + 10 * Math.PI; // random + extra rotations
       let start = null;
 
       function animateSpin(timestamp) {
@@ -148,7 +145,6 @@
         const eased = Math.min(progress, 1);
         const angle = spinAngle * (1 - Math.pow(1 - eased, 3));
 
-        ctx.clearRect(0, 0, 400, 400);
         ctx.save();
         ctx.translate(200, 200);
         ctx.rotate(angle);
@@ -169,7 +165,6 @@
       requestAnimationFrame(animateSpin);
     });
 
-    // 🔧 Safer fetch with raw text fallback
     function sendResult(email, prize, code) {
       fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
         method: "POST",
@@ -177,21 +172,21 @@
         body: JSON.stringify({ email, prize, code })
       })
       .then(async res => {
-        const text = await res.text();
         try {
-          const data = JSON.parse(text);
+          const data = await res.json();
           if (data.success) {
             alert(`🎉 Congratulations! You won ${prize}. Your code is: ${code}`);
           } else {
             alert(data.message || "Something went wrong.");
           }
-        } catch {
-          console.error("Raw server reply:", text);
-          alert("⚠️ Server error — check console for details.");
+        } catch (err) {
+          console.error("JSON parse error:", err);
+          alert("⚠️ Server returned an unexpected response.");
         }
       })
       .catch(err => {
-        alert("Connection error: " + err.message);
+        console.error("Fetch error:", err);
+        alert("Connection error. Please try again later.");
       });
     }
   </script>
