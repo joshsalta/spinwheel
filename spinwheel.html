@@ -6,173 +6,257 @@
   <style>
     body {
       font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f9f9f9;
+    }
+    #spin-wrapper {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      background: #f9f9f9;
+      gap: 50px;
+      margin-top: 30px;
     }
-    .container {
-      display: flex;
-      gap: 40px;
-      align-items: center;
+    #wheel-container {
+      text-align: center;
     }
-    #wheelWrapper {
-      position: relative;
-      display: inline-block;
+    #result {
+      margin-top: 20px;
     }
-    #wheelCanvas {
-      border-radius: 50%;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
-    }
-    #pointer {
-      width: 0;
-      height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-bottom: 35px solid red;
-      position: absolute;
-      top: -35px;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 2px solid black; /* outline */
-    }
-    #spinBtn {
-      margin-top: 15px;
+    button {
       padding: 12px 25px;
+      margin-top: 15px;
       font-size: 16px;
-      background: black;
-      color: white;
-      border: none;
       cursor: pointer;
+      border: none;
       border-radius: 5px;
     }
-    #spinBtn:disabled {
-      background: #aaa;
-      cursor: not-allowed;
+    svg {
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease-out;
     }
-    .form {
-      max-width: 300px;
+    /* Idle rocking animation */
+    @keyframes idleRock {
+      0%   { transform: rotate(-2deg); }
+      50%  { transform: rotate(2deg); }
+      100% { transform: rotate(-2deg); }
     }
-    input {
-      padding: 10px;
-      width: 100%;
-      margin: 10px 0;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    #wheel.idle {
+      animation: idleRock 3s ease-in-out infinite;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div id="wheelWrapper">
-      <div id="pointer"></div>
-      <canvas id="wheelCanvas" width="400" height="400"></canvas>
-      <button id="spinBtn" disabled>Spin Now</button>
+
+  <div id="spin-wrapper">
+
+    <!-- Wheel -->
+    <div id="wheel-container">
+      <div style="position:relative; display:inline-block;">
+        <svg id="wheel" xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"></svg>
+        <!-- Pointer -->
+        <div style="position:absolute; top:10px; left:50%; transform:translateX(-50%);">
+          <svg width="30" height="30">
+            <polygon points="15,25 25,5 5,5" style="fill:red; stroke:black; stroke-width:2;"></polygon>
+          </svg>
+        </div>
+      </div>
+      <br>
+      <button id="spinBtn" onclick="spinWheel()" disabled 
+              style="background:#ccc; color:#666; cursor:not-allowed;">
+        Spin Now
+      </button>
     </div>
-    <div class="form">
+
+    <!-- Email Form -->
+    <div id="email-form" style="max-width:300px; text-align:left;">
       <h2>Spin the Wheel and Unlock Your Reward!</h2>
       <p>Enter your email to enable the spin button and win exclusive discounts!</p>
-      <input type="email" id="email" placeholder="Enter your email">
+      <input type="email" id="userEmail" placeholder="Enter your email" 
+             style="padding:10px; width:100%; margin-bottom:10px;" oninput="validateEmail()"/>
     </div>
+
   </div>
 
-  <script>
-    const wheelCanvas = document.getElementById("wheelCanvas");
-    const ctx = wheelCanvas.getContext("2d");
-    const spinBtn = document.getElementById("spinBtn");
-    const emailInput = document.getElementById("email");
+  <!-- Result -->
+  <div id="result" style="display:none; margin-top:20px; text-align:center;">
+    <h2 id="resultText"></h2>
+    <button onclick="window.location.href='https://www.innotechnutrition.com/our-products'">
+      Shop Now
+    </button>
+  </div>
 
-    // Prize segments
-    const prizes = [
-      { label: "5% OFF", code: "CHFA5" },
-      { label: "10% OFF", code: "CHFA10" },
-      { label: "15% OFF", code: "CHFA15" },
-      { label: "20% OFF", code: "CHFA20" },
-      { label: "30% OFF", code: "CHFA30" },
-      { label: "50% OFF", code: "CHFA50" },
-      { label: "75% OFF", code: "CHFA75" }
-    ];
+<script>
+// === Prize Setup ===
+const prizes = [
+  {label: "5% OFF", code: "CHFA5", weight: 60},
+  {label: "10% OFF", code: "CHFA10", weight: 20},
+  {label: "15% OFF", code: "CHFA15", weight: 10},
+  {label: "20% OFF", code: "CHFA20", weight: 5},
+  {label: "30% OFF", code: "CHFA30", weight: 3},
+  {label: "50% OFF", code: "CHFA50", weight: 1},
+  {label: "75% OFF", code: "CHFA75", weight: 0.5}
+];
+const colors = ["#000000", "#d3d3d3"]; 
+const svg = document.getElementById("wheel");
+const radius = 200;
+const center = 200;
+let currentRotation = 0;
 
-    // Colors: alternating black/gray, last slice green
-    const colors = ["#000000", "#d3d3d3", "#000000", "#d3d3d3", "#000000", "#d3d3d3", "#228B22"];
-    const arcSize = (2 * Math.PI) / prizes.length;
+// === Draw Wheel ===
+function drawWheel() {
+  svg.innerHTML = "";
+  let anglePerSlice = 360 / prizes.length;
 
-    let baseAngle = 0; // base rotation for idle spin
+  for (let i = 0; i < prizes.length; i++) {
+    let startAngle = i * anglePerSlice;
+    let endAngle = startAngle + anglePerSlice;
+    let largeArc = endAngle - startAngle > 180 ? 1 : 0;
 
-    function drawWheel(rotation = 0) {
-      ctx.clearRect(0, 0, 400, 400);
-      for (let i = 0; i < prizes.length; i++) {
-        const angle = i * arcSize + rotation;
-        ctx.beginPath();
-        ctx.moveTo(200, 200);
-        ctx.arc(200, 200, 200, angle, angle + arcSize);
-        ctx.closePath();
-        ctx.fillStyle = colors[i];
-        ctx.fill();
-        ctx.strokeStyle = "#000"; // black dividers
-        ctx.lineWidth = 3;
-        ctx.stroke();
+    let x1 = center + radius * Math.cos(Math.PI * startAngle / 180);
+    let y1 = center + radius * Math.sin(Math.PI * startAngle / 180);
+    let x2 = center + radius * Math.cos(Math.PI * endAngle / 180);
+    let y2 = center + radius * Math.sin(Math.PI * endAngle / 180);
 
-        // Labels
-        ctx.save();
-        ctx.translate(200, 200);
-        ctx.rotate(angle + arcSize / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 16px Arial";
-        ctx.fillText(prizes[i].label, 180, 10);
-        ctx.restore();
-      }
+    let pathData = `
+      M ${center} ${center}
+      L ${x1} ${y1}
+      A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}
+      Z
+    `;
+
+    let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+    // ✅ Highlight 75% OFF slice in green
+    if (prizes[i].label === "75% OFF") {
+      path.setAttribute("fill", "#28a745"); // green
+    } else {
+      path.setAttribute("fill", colors[i % 2]); // black/gray alternating
     }
 
-    // Idle animation (gentle spinning)
-    function idleSpin() {
-      baseAngle += 0.002; // slow spin
-      drawWheel(baseAngle);
-      if (!spinning) requestAnimationFrame(idleSpin);
+    path.setAttribute("d", pathData);
+    path.setAttribute("stroke", "#ffffff");
+    path.setAttribute("stroke-width", "2");
+    svg.appendChild(path);
+
+    let midAngle = startAngle + anglePerSlice / 2;
+    let lx = center + (radius - 50) * Math.cos(Math.PI * midAngle / 180);
+    let ly = center + (radius - 50) * Math.sin(Math.PI * midAngle / 180);
+
+    let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", lx);
+    text.setAttribute("y", ly);
+    text.setAttribute("fill", "#fff");
+    text.setAttribute("font-size", "16");
+    text.setAttribute("font-weight", "bold");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("alignment-baseline", "middle");
+    text.textContent = prizes[i].label;
+    svg.appendChild(text);
+  }
+}
+drawWheel();
+svg.classList.add("idle");
+
+// === Email Validation ===
+function validateEmail() {
+  const email = document.getElementById("userEmail").value;
+  const spinBtn = document.getElementById("spinBtn");
+  const valid = /\S+@\S+\.\S+/.test(email);
+
+  if (valid) {
+    spinBtn.disabled = false;
+    spinBtn.style.background = "#000";
+    spinBtn.style.color = "#fff";
+    spinBtn.style.cursor = "pointer";
+  } else {
+    spinBtn.disabled = true;
+    spinBtn.style.background = "#ccc";
+    spinBtn.style.color = "#666";
+    spinBtn.style.cursor = "not-allowed";
+  }
+}
+
+// === Pick Prize with Weighted Odds ===
+function pickPrize() {
+  let totalWeight = prizes.reduce((a, p) => a + p.weight, 0);
+  let rnd = Math.random() * totalWeight;
+  let sum = 0;
+  for (let p of prizes) {
+    sum += p.weight;
+    if (rnd <= sum) return p;
+  }
+  return prizes[0];
+}
+
+let spinning = false;
+function spinWheel() {
+  if (spinning) return;
+  spinning = true;
+  svg.classList.remove("idle"); 
+
+  const prize = pickPrize();
+  const prizeIndex = prizes.indexOf(prize);
+  const sliceAngle = 360 / prizes.length;
+  const targetAngle = 360 - (prizeIndex * sliceAngle + sliceAngle / 2);
+
+  const spins = 5;
+  const finalAngle = spins * 360 + targetAngle;
+  let duration = 4000;
+  let start = null;
+
+  function animate(timestamp) {
+    if (!start) start = timestamp;
+    let progress = (timestamp - start) / duration;
+    if (progress > 1) progress = 1;
+
+    let eased = 1 - Math.pow(1 - progress, 3);
+    currentRotation = eased * finalAngle;
+    svg.style.transform = `rotate(${currentRotation}deg)`;
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      showResult(prize);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// === Show Result & Call Backend ===
+function showResult(prize) {
+  const email = document.getElementById("userEmail").value;
+
+  fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
+    method: "POST",
+    body: JSON.stringify({
+      email: email,
+      prize: prize.label,
+      code: prize.code
+    }),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("Server response:", data); // DEBUG log
+
+    if (!data.success) {
+      alert(data.message || "Something went wrong. Please try again.");
+      location.reload();
+      return;
     }
 
-    drawWheel();
-    idleSpin();
-
-    // Enable spin when email entered
-    emailInput.addEventListener("input", () => {
-      spinBtn.disabled = emailInput.value.trim() === "";
-    });
-
-    let spinning = false;
-
-    spinBtn.addEventListener("click", () => {
-      if (spinning) return;
-      spinning = true;
-
-      const spinAngle = Math.random() * 2 * Math.PI + 12 * Math.PI; // random + extra rotations
-      let start = null;
-
-      function animateSpin(timestamp) {
-        if (!start) start = timestamp;
-        const progress = (timestamp - start) / 5000; // 5s spin
-        const eased = 1 - Math.pow(1 - Math.min(progress, 1), 4); // stronger easing
-        const angle = baseAngle + spinAngle * eased;
-
-        drawWheel(angle);
-
-        if (progress < 1) {
-          requestAnimationFrame(animateSpin);
-        } else {
-          baseAngle = angle % (2 * Math.PI); // save final angle for idle spin
-          const selected = Math.floor(((2 * Math.PI - (baseAngle % (2 * Math.PI))) % (2 * Math.PI)) / arcSize);
-          const prize = prizes[selected];
-          alert(`🎉 Congratulations! You won ${prize.label}. Code: ${prize.code}`);
-          spinning = false;
-          idleSpin();
-        }
-      }
-
-      requestAnimationFrame(animateSpin);
-    });
-  </script>
+    document.getElementById("spin-wrapper").style.display = "none";
+    document.getElementById("result").style.display = "block";
+    document.getElementById("resultText").innerHTML =
+      `🎉 Congrats! You won <b>${data.prize}</b><br>Your code: <b>${data.code}</b>`;
+  })
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("Connection error. Please try again.");
+  });
+}
+</script>
 </body>
 </html>
