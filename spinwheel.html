@@ -35,6 +35,7 @@
       top: -35px;
       left: 50%;
       transform: translateX(-50%);
+      border: 2px solid black; /* outline */
     }
     #spinBtn {
       margin-top: 15px;
@@ -98,18 +99,20 @@
     const colors = ["#000000", "#d3d3d3", "#000000", "#d3d3d3", "#000000", "#d3d3d3", "#228B22"];
     const arcSize = (2 * Math.PI) / prizes.length;
 
-    function drawWheel() {
+    let baseAngle = 0; // base rotation for idle spin
+
+    function drawWheel(rotation = 0) {
       ctx.clearRect(0, 0, 400, 400);
       for (let i = 0; i < prizes.length; i++) {
-        const angle = i * arcSize;
+        const angle = i * arcSize + rotation;
         ctx.beginPath();
         ctx.moveTo(200, 200);
         ctx.arc(200, 200, 200, angle, angle + arcSize);
         ctx.closePath();
         ctx.fillStyle = colors[i];
         ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#000"; // black dividers
+        ctx.lineWidth = 3;
         ctx.stroke();
 
         // Labels
@@ -123,7 +126,16 @@
         ctx.restore();
       }
     }
+
+    // Idle animation (gentle spinning)
+    function idleSpin() {
+      baseAngle += 0.002; // slow spin
+      drawWheel(baseAngle);
+      if (!spinning) requestAnimationFrame(idleSpin);
+    }
+
     drawWheel();
+    idleSpin();
 
     // Enable spin when email entered
     emailInput.addEventListener("input", () => {
@@ -136,59 +148,31 @@
       if (spinning) return;
       spinning = true;
 
-      const spinAngle = Math.random() * 2 * Math.PI + 10 * Math.PI; // random + extra rotations
+      const spinAngle = Math.random() * 2 * Math.PI + 12 * Math.PI; // random + extra rotations
       let start = null;
 
       function animateSpin(timestamp) {
         if (!start) start = timestamp;
-        const progress = (timestamp - start) / 4000; // 4s spin
-        const eased = Math.min(progress, 1);
-        const angle = spinAngle * (1 - Math.pow(1 - eased, 3));
+        const progress = (timestamp - start) / 5000; // 5s spin
+        const eased = 1 - Math.pow(1 - Math.min(progress, 1), 4); // stronger easing
+        const angle = baseAngle + spinAngle * eased;
 
-        ctx.save();
-        ctx.translate(200, 200);
-        ctx.rotate(angle);
-        ctx.translate(-200, -200);
-        drawWheel();
-        ctx.restore();
+        drawWheel(angle);
 
         if (progress < 1) {
           requestAnimationFrame(animateSpin);
         } else {
-          const selected = Math.floor(((2 * Math.PI - (angle % (2 * Math.PI))) % (2 * Math.PI)) / arcSize);
+          baseAngle = angle % (2 * Math.PI); // save final angle for idle spin
+          const selected = Math.floor(((2 * Math.PI - (baseAngle % (2 * Math.PI))) % (2 * Math.PI)) / arcSize);
           const prize = prizes[selected];
-          sendResult(emailInput.value.trim(), prize.label, prize.code);
+          alert(`🎉 Congratulations! You won ${prize.label}. Code: ${prize.code}`);
           spinning = false;
+          idleSpin();
         }
       }
 
       requestAnimationFrame(animateSpin);
     });
-
-    function sendResult(email, prize, code) {
-      fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, prize, code })
-      })
-      .then(async res => {
-        try {
-          const data = await res.json();
-          if (data.success) {
-            alert(`🎉 Congratulations! You won ${prize}. Your code is: ${code}`);
-          } else {
-            alert(data.message || "Something went wrong.");
-          }
-        } catch (err) {
-          console.error("JSON parse error:", err);
-          alert("⚠️ Server returned an unexpected response.");
-        }
-      })
-      .catch(err => {
-        console.error("Fetch error:", err);
-        alert("Connection error. Please try again later.");
-      });
-    }
   </script>
 </body>
 </html>
