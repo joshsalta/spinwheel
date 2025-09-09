@@ -221,7 +221,7 @@ function spinWheel() {
 function showResult(prize) {
   const email = document.getElementById("userEmail").value;
 
-  fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
+  fetch("YOUR_WEB_APP_URL_HERE", {
     method: "POST",
     body: JSON.stringify({
       email: email,
@@ -232,18 +232,23 @@ function showResult(prize) {
   })
   .then(res => res.json())
   .then(data => {
+    console.log("Server response:", data); // DEBUG log
+
     if (!data.success) {
-      alert(data.message);
-      location.reload(); // Reset page if duplicate
+      alert(data.message || "Something went wrong. Please try again.");
+      location.reload();
       return;
     }
+
+    // ✅ Always use backend's prize & code
     document.getElementById("spin-wrapper").style.display = "none";
     document.getElementById("result").style.display = "block";
     document.getElementById("resultText").innerHTML =
-      `🎉 Congrats! You won <b>${prize.label}</b><br>Your code: <b>${prize.code}</b>`;
+      `🎉 Congrats! You won <b>${data.prize}</b><br>Your code: <b>${data.code}</b>`;
   })
-  .catch(err => console.error(err));
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("Connection error. Please try again.");
+  });
 }
-</script>
-</body>
-</html>
+
