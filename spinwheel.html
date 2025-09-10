@@ -166,7 +166,7 @@ function startSpin() {
   svg.classList.remove("idle");
 
   const email = document.getElementById("userEmail").value;
-  fetch("https://script.google.com/macros/s/AKfycbzaiQlhyY9KDZOuWy6UrYUEr-H0MjK24u4jlE-eUFQvarfA21vbqTzY0kSB58xJAisy/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbxL68tfGBzwEx_fvsHEmDe2woPO9L2K-3r1MrzhJ03Vi2-0hSQXBs6y49TxNSgR1ig-/exec, {
     method: "POST",
     body: JSON.stringify({ email: email }),
     headers: { "Content-Type": "application/json" }
