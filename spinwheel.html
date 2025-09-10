@@ -35,7 +35,6 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
       transition: transform 0.3s ease-out;
     }
-    /* Idle rocking animation */
     @keyframes idleRock {
       0%   { transform: rotate(-2deg); }
       50%  { transform: rotate(2deg); }
@@ -49,7 +48,6 @@
 <body>
 
   <div id="spin-wrapper">
-
     <!-- Wheel -->
     <div id="wheel-container">
       <div style="position:relative; display:inline-block;">
@@ -62,7 +60,7 @@
         </div>
       </div>
       <br>
-      <button id="spinBtn" onclick="spinWheel()" disabled 
+      <button id="spinBtn" onclick="startSpin()" disabled 
               style="background:#ccc; color:#666; cursor:not-allowed;">
         Spin Now
       </button>
@@ -75,7 +73,6 @@
       <input type="email" id="userEmail" placeholder="Enter your email" 
              style="padding:10px; width:100%; margin-bottom:10px;" oninput="validateEmail()"/>
     </div>
-
   </div>
 
   <!-- Result -->
@@ -87,53 +84,40 @@
   </div>
 
 <script>
-// === Prize Setup ===
 const prizes = [
-  {label: "5% OFF", code: "CHFA5", weight: 60},
-  {label: "10% OFF", code: "CHFA10", weight: 20},
-  {label: "15% OFF", code: "CHFA15", weight: 10},
-  {label: "20% OFF", code: "CHFA20", weight: 5},
-  {label: "30% OFF", code: "CHFA30", weight: 3},
-  {label: "50% OFF", code: "CHFA50", weight: 1},
-  {label: "75% OFF", code: "CHFA75", weight: 0.5}
+  {label: "5% OFF", code: "CHFA5"},
+  {label: "10% OFF", code: "CHFA10"},
+  {label: "15% OFF", code: "CHFA15"},
+  {label: "20% OFF", code: "CHFA20"},
+  {label: "30% OFF", code: "CHFA30"},
+  {label: "50% OFF", code: "CHFA50"},
+  {label: "75% OFF", code: "CHFA75"}
 ];
 const colors = ["#000000", "#d3d3d3"]; 
 const svg = document.getElementById("wheel");
-const radius = 200;
-const center = 200;
+const radius = 200, center = 200;
 let currentRotation = 0;
 
-// === Draw Wheel ===
+// Draw wheel
 function drawWheel() {
   svg.innerHTML = "";
   let anglePerSlice = 360 / prizes.length;
-
   for (let i = 0; i < prizes.length; i++) {
     let startAngle = i * anglePerSlice;
     let endAngle = startAngle + anglePerSlice;
     let largeArc = endAngle - startAngle > 180 ? 1 : 0;
-
     let x1 = center + radius * Math.cos(Math.PI * startAngle / 180);
     let y1 = center + radius * Math.sin(Math.PI * startAngle / 180);
     let x2 = center + radius * Math.cos(Math.PI * endAngle / 180);
     let y2 = center + radius * Math.sin(Math.PI * endAngle / 180);
-
     let pathData = `
       M ${center} ${center}
       L ${x1} ${y1}
       A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}
       Z
     `;
-
     let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-
-    // ✅ Highlight 75% OFF slice in green
-    if (prizes[i].label === "75% OFF") {
-      path.setAttribute("fill", "#28a745"); // green
-    } else {
-      path.setAttribute("fill", colors[i % 2]); // black/gray alternating
-    }
-
+    path.setAttribute("fill", prizes[i].label === "75% OFF" ? "#28a745" : colors[i % 2]);
     path.setAttribute("d", pathData);
     path.setAttribute("stroke", "#ffffff");
     path.setAttribute("stroke-width", "2");
@@ -142,7 +126,6 @@ function drawWheel() {
     let midAngle = startAngle + anglePerSlice / 2;
     let lx = center + (radius - 50) * Math.cos(Math.PI * midAngle / 180);
     let ly = center + (radius - 50) * Math.sin(Math.PI * midAngle / 180);
-
     let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", lx);
     text.setAttribute("y", ly);
@@ -158,12 +141,11 @@ function drawWheel() {
 drawWheel();
 svg.classList.add("idle");
 
-// === Email Validation ===
+// Email validation
 function validateEmail() {
   const email = document.getElementById("userEmail").value;
   const spinBtn = document.getElementById("spinBtn");
   const valid = /\S+@\S+\.\S+/.test(email);
-
   if (valid) {
     spinBtn.disabled = false;
     spinBtn.style.background = "#000";
@@ -177,29 +159,37 @@ function validateEmail() {
   }
 }
 
-// === Pick Prize with Weighted Odds ===
-function pickPrize() {
-  let totalWeight = prizes.reduce((a, p) => a + p.weight, 0);
-  let rnd = Math.random() * totalWeight;
-  let sum = 0;
-  for (let p of prizes) {
-    sum += p.weight;
-    if (rnd <= sum) return p;
-  }
-  return prizes[0];
-}
-
 let spinning = false;
-function spinWheel() {
+function startSpin() {
   if (spinning) return;
   spinning = true;
-  svg.classList.remove("idle"); 
+  svg.classList.remove("idle");
 
-  const prize = pickPrize();
-  const prizeIndex = prizes.indexOf(prize);
+  const email = document.getElementById("userEmail").value;
+  fetch("YOUR_APPS_SCRIPT_URL_HERE", {
+    method: "POST",
+    body: JSON.stringify({ email: email }),
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (!data.success) {
+      alert(data.message || "Something went wrong.");
+      location.reload();
+      return;
+    }
+    spinWheel(data.sliceIndex, data.prize, data.code);
+  })
+  .catch(err => {
+    console.error("Fetch error:", err);
+    alert("Connection error.");
+    spinning = false;
+  });
+}
+
+function spinWheel(sliceIndex, prizeLabel, prizeCode) {
   const sliceAngle = 360 / prizes.length;
-  const targetAngle = 360 - (prizeIndex * sliceAngle + sliceAngle / 2);
-
+  const targetAngle = 360 - (sliceIndex * sliceAngle + sliceAngle / 2);
   const spins = 5;
   const finalAngle = spins * 360 + targetAngle;
   let duration = 4000;
@@ -209,53 +199,20 @@ function spinWheel() {
     if (!start) start = timestamp;
     let progress = (timestamp - start) / duration;
     if (progress > 1) progress = 1;
-
     let eased = 1 - Math.pow(1 - progress, 3);
     currentRotation = eased * finalAngle;
     svg.style.transform = `rotate(${currentRotation}deg)`;
-
     if (progress < 1) {
       requestAnimationFrame(animate);
     } else {
       spinning = false;
-      showResult(prize);
+      document.getElementById("spin-wrapper").style.display = "none";
+      document.getElementById("result").style.display = "block";
+      document.getElementById("resultText").innerHTML =
+        `🎉 Congrats! You won <b>${prizeLabel}</b><br>Your code: <b>${prizeCode}</b>`;
     }
   }
   requestAnimationFrame(animate);
-}
-
-// === Show Result & Call Backend ===
-function showResult(prize) {
-  const email = document.getElementById("userEmail").value;
-
-  fetch("https://script.google.com/macros/s/AKfycbwNOMZXWdfc_TIt5BAT6yQ2hkOW5taF5Fnw4L2nsk_bQTKPKWNmA-yvC9dGP9Hd-hxy/exec", {
-    method: "POST",
-    body: JSON.stringify({
-      email: email,
-      prize: prize.label,
-      code: prize.code
-    }),
-    headers: { "Content-Type": "application/json" }
-  })
-  .then(res => res.json())
-  .then(data => {
-    console.log("Server response:", data); // DEBUG log
-
-    if (!data.success) {
-      alert(data.message || "Something went wrong. Please try again.");
-      location.reload();
-      return;
-    }
-
-    document.getElementById("spin-wrapper").style.display = "none";
-    document.getElementById("result").style.display = "block";
-    document.getElementById("resultText").innerHTML =
-      `🎉 Congrats! You won <b>${data.prize}</b><br>Your code: <b>${data.code}</b>`;
-  })
-  .catch(err => {
-    console.error("Fetch error:", err);
-    alert("Connection error. Please try again.");
-  });
 }
 </script>
 </body>
